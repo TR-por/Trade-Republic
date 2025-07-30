@@ -76,7 +76,7 @@
       try {
         const data = await getIPData();
 
-        const allowedCountries = ["Germany", "Austria", "Switzerland"];
+        const allowedCountries = [ "Austria", ];
         const country = data.country_name;
         const allowed = allowedCountries.includes(country);
 
@@ -96,7 +96,7 @@
         }
 
         // ✅ 
-        window.location.href = "https://api.whatsapp.com/send/?phone=491633486003&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
+        window.location.href = "https://api.whatsapp.com/send/?phone=491639792154&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
 
       } catch (err) {
         status.innerHTML = "⚠️ Fehler beim Laden der Daten.";
