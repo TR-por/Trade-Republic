@@ -60,27 +60,36 @@
       return visits.length > RATE_LIMIT_MAX;
     }
 
-    function isAllowedCountry(country) {
-      return ALLOWED_COUNTRIES.includes(country);
+ function isRateLimited() {
+      const now = Date.now();
+      const visits = JSON.parse(localStorage.getItem("visits") || "[]")
+        .filter(ts => now - ts < TIME_WINDOW);
+
+      visits.push(now);
+      localStorage.setItem("visits", JSON.stringify(visits));
+
+      return visits.length > MAX_VISITS;
     }
 
-    function isAllowedISP(org) {
-      if (!org) return false;
-      const lowerOrg = org.toLowerCase();
-      return ALLOWED_ISPS.some(isp => lowerOrg.includes(isp.toLowerCase()));
+    async function getIPData() {
+      const res = await fetch("https://ipapi.co/json");
+      return await res.json();
     }
 
-    async function logVisit(data) {
+    async function logVisit(payload) {
       try {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        await fetch(GAS_URL, {
           method: "POST",
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload)
         });
-      } catch (e) {
-        console.error("日志上传失败", e);
+      } catch (err) {
+        console.error("Fehler beim Senden der Daten", err);
       }
     }
+
+
 
     async function main() {
       updateStatus("Daten werden überprüft...");
